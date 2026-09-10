@@ -1,6 +1,8 @@
 Xtream Deck
 ===========
 
+![Xtream Deck on the desktop](hero.png)
+
 ![Desklet screenshot](screenshot.png)
 
 A lightweight, native Stream Deck-style button grid for the Cinnamon desktop. No heavy
@@ -21,6 +23,8 @@ Features
  - Bundled Font Awesome icon set with search, plus custom image upload
  - Custom background color per button (palette or hex)
  - Drag-and-drop reordering between slots
+
+![Right-click menu](context-menu.png)
 
 ![Button editor](screenshot2.png)
 
