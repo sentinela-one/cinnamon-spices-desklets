@@ -1205,14 +1205,22 @@ class XtreamDeckDesklet extends Desklet.Desklet {
         };
 
         addItem("Edit", () => this._openEditor(slotIndex));
+        if (hasContent && this._findNearestFreeSlot(slotIndex) !== null) {
+            addItem("Duplicate", () => this._duplicateSlot(slotIndex));
+        }
         if (canMoveNext) {
             addItem("Move to next page", () => this._moveSlotToNextAvailablePage(slotIndex));
         }
         if (canMovePrevious) {
             addItem("Move to previous page", () => this._moveSlotToPreviousAvailablePage(slotIndex));
         }
+        if (hasContent) {
+            addItem("Delete button", () => this._confirmDeleteSlot(slotIndex));
+        }
 
-        Main.uiGroup.add_actor(menu);
+        // addChrome (not uiGroup.add_actor) so the menu joins the stage input
+        // region - otherwise the part outside the desklet's own area ignores hover/clicks.
+        Main.layoutManager.addChrome(menu);
         let [x, y] = global.get_pointer();
         menu.set_position(x, y);
         this._slotContextMenu = menu;
@@ -1239,6 +1247,7 @@ class XtreamDeckDesklet extends Desklet.Desklet {
             this._slotContextMenuCaptureId = null;
         }
         if (this._slotContextMenu) {
+            Main.layoutManager.removeChrome(this._slotContextMenu);
             this._slotContextMenu.destroy();
             this._slotContextMenu = null;
         }
@@ -1255,6 +1264,44 @@ class XtreamDeckDesklet extends Desklet.Desklet {
             if (freeIndex !== -1) return { pageIndex: p, freeIndex: freeIndex };
         }
         return null;
+    }
+
+    // Nearest empty slot to slotIndex on the current page, else the first free
+    // one on later pages, else on earlier pages. Returns { pageIndex, freeIndex } or null.
+    _findNearestFreeSlot(slotIndex) {
+        let slots = this._pages[this._currentPage].slots;
+        let best = -1;
+        for (let i = 0; i < slots.length; i++) {
+            if (!isEmptySlot(slots[i])) continue;
+            if (best === -1 || Math.abs(i - slotIndex) < Math.abs(best - slotIndex)) best = i;
+        }
+        if (best !== -1) return { pageIndex: this._currentPage, freeIndex: best };
+        return this._findFreeSlotInDirection(1) || this._findFreeSlotInDirection(-1);
+    }
+
+    _duplicateSlot(slotIndex) {
+        let target = this._findNearestFreeSlot(slotIndex);
+        if (!target) return;
+        this._pages[target.pageIndex].slots[target.freeIndex] = Object.assign({}, this._pages[this._currentPage].slots[slotIndex]);
+        this._saveState();
+        this._render();
+    }
+
+    _confirmDeleteSlot(slotIndex) {
+        let page = this._pages[this._currentPage];
+        let name = page.slots[slotIndex].label;
+        let dialog = new ConfirmDialog(
+            this._metadata.path,
+            "Delete button?",
+            (name ? "\"" + name + "\" will be" : "This button will be") + " permanently removed. This cannot be undone.",
+            "Delete",
+            () => {
+                page.slots[slotIndex] = emptySlot();
+                this._saveState();
+                this._render();
+            }
+        );
+        dialog.open();
     }
 
     _moveSlotTo(slotIndex, target) {
